@@ -2,6 +2,7 @@
 
 BASE_API_URL="https://desec.io/api/v1/domains"
 TTL=3600
+MIN_TTL=3600
 DOMAIN_SEPERATOR="."
 DESEC_NAMESERVERS=("ns1.desec.io" "ns2.desec.org")
 CHALLENGE_RRTYPE="TXT"
@@ -20,11 +21,11 @@ desec_add_rrset() {
   local subdomain="$2"
   local rrtype="$3"
   local content="$4"
-  local ttl="${5:-3600}"
+  local ttl="${5:-${MIN_TTL}}"
 
-  if [ "${ttl}" -lt 3600 ]; then
-    echo "TTL must be at least 3600 s. Adjusting." >&2
-    ttl=3600
+  if [ "${ttl}" -lt ${MIN_TTL} ]; then
+    echo "TTL must be at least ${MIN_TTL} s. Adjusting." >&2
+    ttl=${MIN_TTL}
   fi
 
   if [ "${rrtype}" = "TXT" ] && [ "${content:0-1}" != '"' ]; then
