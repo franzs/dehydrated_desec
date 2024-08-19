@@ -13,6 +13,7 @@ if [ -z "${DESEC_TOKEN}" ]; then
 fi
 
 if [ -f "${CONFIG}" ]; then
+  # shellcheck source=/dev/null
   . "${CONFIG}"
 fi
 
@@ -82,6 +83,7 @@ desec_challenge_name() {
 }
 
 deploy_challenge() {
+  # shellcheck disable=SC2034
   local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"
 
   # This hook is called once for every domain that needs to be
@@ -136,6 +138,7 @@ deploy_challenge() {
   done
 
   # give some extra time
+  # shellcheck disable=SC2034
   for i in {1..4}; do
     sleep 3
     echo -n "."
@@ -145,6 +148,7 @@ deploy_challenge() {
 }
 
 clean_challenge() {
+  # shellcheck disable=SC2034
   local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"
 
   # This hook is called after attempting to validate each domain,
