@@ -6,6 +6,8 @@ MIN_TTL=3600
 DOMAIN_SEPERATOR="."
 DESEC_NAMESERVERS=("ns1.desec.io" "ns2.desec.org")
 CHALLENGE_RRTYPE="TXT"
+POLLING_INTERVAL=3
+POLLING_TIMEOUT=240
 
 if [ -z "${DESEC_TOKEN}" ]; then
   echo "Please set environment variable DESEC_TOKEN." >&2
@@ -107,6 +109,7 @@ deploy_challenge() {
   local subdomain_name
   local challenge_name
   local query_result
+  local start_time
 
   domain_name="$(desec_responsible_domain "${DOMAIN}")"
 
@@ -122,8 +125,16 @@ deploy_challenge() {
 
   echo -ne "\nWaiting for record activation"
 
+  start_time=$(date +%s)
+
   while true; do
-    sleep 3
+    if [ $(($(date +%s) - start_time)) -gt ${POLLING_TIMEOUT} ]; then
+      echo
+      echo "Waited more than ${POLLING_TIMEOUT} s for record activation. Giving up."
+      return
+    fi
+
+    sleep ${POLLING_INTERVAL}
     echo -n "."
 
     for nameserver in "${DESEC_NAMESERVERS[@]}"; do
@@ -140,7 +151,7 @@ deploy_challenge() {
   # give some extra time
   # shellcheck disable=SC2034
   for i in {1..4}; do
-    sleep 3
+    sleep ${POLLING_INTERVAL}
     echo -n "."
   done
 
