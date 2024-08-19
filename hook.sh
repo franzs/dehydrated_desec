@@ -5,7 +5,6 @@ TTL=3600
 DOMAIN_SEPERATOR="."
 DESEC_NAMESERVERS=("ns1.desec.io" "ns2.desec.org")
 CHALLENGE_RRTYPE="TXT"
-DUMMY_CONTENT="DUMMY-CONTENT-FOR-DEHYDRATED"
 
 if [ -z "${DESEC_TOKEN}" ]; then
   echo "Please set environment variable DESEC_TOKEN." >&2
@@ -15,19 +14,6 @@ fi
 if [ -f "${CONFIG}" ]; then
   . "${CONFIG}"
 fi
-
-desec_check_rrset() {
-  local domainname="$1"
-  local subdomain="$2"
-  local rrtype="$3"
-
-  local result_subname
-
-  result_subname="$(curl -sS "${BASE_API_URL}/${domainname}/rrsets/${subdomain}/${rrtype}/" \
-    --header "Authorization: Token ${DESEC_TOKEN}" | jq -r '.records[0]' | sed -e 's/^"//; s/"$//;')"
-
-  echo "${result_subname}"
-}
 
 desec_add_rrset() {
   local domainname="$1"
@@ -117,7 +103,6 @@ deploy_challenge() {
   local domain_name
   local subdomain_name
   local challenge_name
-  local check_result
   local query_result
 
   domain_name="$(desec_responsible_domain "${DOMAIN}")"
@@ -129,12 +114,6 @@ deploy_challenge() {
 
   subdomain_name="$(desec_subdomain_name "${DOMAIN}" "${domain_name}")"
   challenge_name="$(desec_challenge_name "${subdomain_name}")"
-
-  check_result="$(desec_check_rrset "${domain_name}" "${subdomain_name}" "${CHALLENGE_RRTYPE}")"
-
-  if [ "${check_result}" = "null" ]; then
-    desec_add_rrset "${domain_name}" "${subdomain_name}" "${CHALLENGE_RRTYPE}" "${DUMMY_CONTENT}" "${TTL}"
-  fi
 
   desec_add_rrset "${domain_name}" "${challenge_name}" "${CHALLENGE_RRTYPE}" "${TOKEN_VALUE}" "${TTL}"
 
@@ -176,7 +155,6 @@ clean_challenge() {
   local domain_name
   local subdomain_name
   local challenge_name
-  local check_result
 
   domain_name="$(desec_responsible_domain "${DOMAIN}")"
 
@@ -189,12 +167,6 @@ clean_challenge() {
   challenge_name="$(desec_challenge_name "${subdomain_name}")"
 
   desec_remove_rrset "${domain_name}" "${challenge_name}" "${CHALLENGE_RRTYPE}"
-
-  check_result="$(desec_check_rrset "${domain_name}" "${subdomain_name}" "${CHALLENGE_RRTYPE}")"
-
-  if [ "${check_result}" = "${DUMMY_CONTENT}" ]; then
-    desec_remove_rrset "${domain_name}" "${subdomain_name}" "${CHALLENGE_RRTYPE}"
-  fi
 }
 
 deploy_cert() {
