@@ -65,22 +65,33 @@ desec_remove_rrset() {
     --header "Authorization: Token ${DESEC_TOKEN}"
 }
 
-desec_subdomain_name() {
-  local domain="$1"
+desec_responsible_domain() {
+  local qname="$1"
 
-  cut -d "${DOMAIN_SEPERATOR}" -f 1 <<<"${domain}"
+  curl -sS -X GET "${BASE_API_URL}/?owns_qname=${qname}" \
+    --header "Authorization: Token ${DESEC_TOKEN}" |
+    jq -r '.[0].name'
 }
 
-desec_domain_name() {
+desec_subdomain_name() {
   local domain="$1"
+  local domain_name="$2"
 
-  cut -d "${DOMAIN_SEPERATOR}" -f 2- <<<"${domain}"
+  if [ "${domain}" = "${domain_name}" ]; then
+    echo ""
+  else
+    echo "${domain%"${DOMAIN_SEPERATOR}""${domain_name}"}"
+  fi
 }
 
 desec_challenge_name() {
   local subdomain="$1"
 
-  echo "_acme-challenge${DOMAIN_SEPERATOR}${subdomain}"
+  if [ -z "${subdomain}" ]; then
+    echo "_acme-challenge"
+  else
+    echo "_acme-challenge${DOMAIN_SEPERATOR}${subdomain}"
+  fi
 }
 
 deploy_challenge() {
@@ -103,12 +114,21 @@ deploy_challenge() {
   #   TXT record. For HTTP validation it is the value that is expected
   #   be found in the $TOKEN_FILENAME file.
 
-  local domain_name="$(desec_domain_name "${DOMAIN}")"
-  local subdomain_name="$(desec_subdomain_name "${DOMAIN}")"
-  local challenge_name="$(desec_challenge_name "${subdomain_name}")"
-
+  local domain_name
+  local subdomain_name
+  local challenge_name
   local check_result
   local query_result
+
+  domain_name="$(desec_responsible_domain "${DOMAIN}")"
+
+  if [ "${domain_name}" = "null" ]; then
+    echo "No responsible domain for ${DOMAIN} found." >&2
+    exit 1
+  fi
+
+  subdomain_name="$(desec_subdomain_name "${DOMAIN}" "${domain_name}")"
+  challenge_name="$(desec_challenge_name "${subdomain_name}")"
 
   check_result="$(desec_check_rrset "${domain_name}" "${subdomain_name}" "${CHALLENGE_RRTYPE}")"
 
@@ -153,11 +173,20 @@ clean_challenge() {
   #
   # The parameters are the same as for deploy_challenge.
 
-  local domain_name="$(desec_domain_name "${DOMAIN}")"
-  local subdomain_name="$(desec_subdomain_name "${DOMAIN}")"
-  local challenge_name="$(desec_challenge_name "${subdomain_name}")"
-
+  local domain_name
+  local subdomain_name
+  local challenge_name
   local check_result
+
+  domain_name="$(desec_responsible_domain "${DOMAIN}")"
+
+  if [ "${domain_name}" = "null" ]; then
+    echo "No responsible domain for ${DOMAIN} found." >&2
+    exit 1
+  fi
+
+  subdomain_name="$(desec_subdomain_name "${DOMAIN}" "${domain_name}")"
+  challenge_name="$(desec_challenge_name "${subdomain_name}")"
 
   desec_remove_rrset "${domain_name}" "${challenge_name}" "${CHALLENGE_RRTYPE}"
 
