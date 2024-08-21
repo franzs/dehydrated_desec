@@ -105,11 +105,14 @@ deploy_challenge() {
   #   TXT record. For HTTP validation it is the value that is expected
   #   be found in the $TOKEN_FILENAME file.
 
+  local extra_wait_time=12
+
   local domain_name
   local subdomain_name
   local challenge_name
   local query_result
   local start_time
+  local current_time
 
   domain_name="$(desec_responsible_domain "${DOMAIN}")"
 
@@ -128,7 +131,9 @@ deploy_challenge() {
   start_time=$(date +%s)
 
   while true; do
-    if [ $(($(date +%s) - start_time)) -gt ${POLLING_TIMEOUT} ]; then
+    current_time=$(date +%s)
+
+    if [ $((current_time - start_time)) -gt ${POLLING_TIMEOUT} ]; then
       echo
       echo "Waited more than ${POLLING_TIMEOUT} s for record activation. Giving up."
       return
@@ -149,10 +154,17 @@ deploy_challenge() {
   done
 
   # give some extra time
-  # shellcheck disable=SC2034
-  for i in {1..4}; do
+  start_time=$(date +%s)
+
+  while true; do
+    current_time=$(date +%s)
+
+    if [ $((current_time - start_time)) -ge ${extra_wait_time} ]; then
+      break
+    fi
+
     sleep ${POLLING_INTERVAL}
-    echo -n "."
+    echo -n "+"
   done
 
   echo
