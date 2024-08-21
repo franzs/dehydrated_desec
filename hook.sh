@@ -110,6 +110,7 @@ deploy_challenge() {
   local challenge_name
   local query_result
   local start_time
+  local current_time
 
   domain_name="$(desec_responsible_domain "${DOMAIN}")"
 
@@ -128,7 +129,9 @@ deploy_challenge() {
   start_time=$(date +%s)
 
   while true; do
-    if [ $(($(date +%s) - start_time)) -gt ${POLLING_TIMEOUT} ]; then
+    current_time=$(date +%s)
+
+    if [ $((current_time - start_time)) -gt ${POLLING_TIMEOUT} ]; then
       echo
       echo "Waited more than ${POLLING_TIMEOUT} s for record activation. Giving up."
       return
