@@ -32,10 +32,12 @@ desec_add_rrset() {
 
   echo "Adding ${subdomain}${DOMAIN_SEPERATOR}${domain_name}"
 
-  curl -sS -X POST "${BASE_API_URL}/${domainname}/rrsets/" \
+  curl -sS \
+    -X POST \
     --header "Authorization: Token ${DESEC_TOKEN}" \
-    --header "Content-Type: application/json" --data \
-    "{\"subname\": \"${subdomain}\", \"type\": \"${rrtype}\", \"ttl\": ${ttl}, \"records\": [\"${content}\"]}" |
+    --header "Content-Type: application/json" \
+    --data "{\"subname\": \"${subdomain}\", \"type\": \"${rrtype}\", \"ttl\": ${ttl}, \"records\": [\"${content}\"]}" \
+    "${BASE_API_URL}/${domainname}/rrsets/" |
     jq .
 }
 
@@ -46,15 +48,19 @@ desec_remove_rrset() {
 
   echo "Removing ${subdomain}${DOMAIN_SEPERATOR}${domain_name}"
 
-  curl -sS -X DELETE "${BASE_API_URL}/${domainname}/rrsets/${subdomain}/${rrtype}/" \
-    --header "Authorization: Token ${DESEC_TOKEN}"
+  curl -sS \
+    -X DELETE \
+    --header "Authorization: Token ${DESEC_TOKEN}" \
+    "${BASE_API_URL}/${domainname}/rrsets/${subdomain}/${rrtype}/"
 }
 
 desec_responsible_domain() {
   local qname="$1"
 
-  curl -sS -X GET "${BASE_API_URL}/?owns_qname=${qname}" \
-    --header "Authorization: Token ${DESEC_TOKEN}" |
+  curl -sS \
+    -X GET \
+    --header "Authorization: Token ${DESEC_TOKEN}" \
+    "${BASE_API_URL}/?owns_qname=${qname}" |
     jq -r '.[0].name'
 }
 
