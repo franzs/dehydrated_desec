@@ -9,11 +9,6 @@ CHALLENGE_RRTYPE="TXT"
 POLLING_INTERVAL=3
 POLLING_TIMEOUT=240
 
-if [ -z "${DESEC_TOKEN}" ]; then
-  echo "Please set environment variable DESEC_TOKEN." >&2
-  exit 1
-fi
-
 if [ -f "${CONFIG}" ]; then
   # shellcheck source=/dev/null
   . "${CONFIG}"
@@ -226,8 +221,31 @@ deploy_cert() {
   fi
 }
 
+startup_hook() {
+  # This hook is called before the cron command to do some initial tasks
+  # (e.g. starting a webserver).
+
+  local exit=0
+
+  if [ -z "${DESEC_TOKEN}" ]; then
+    echo "A token is needed for deSEC. Please set environment variable DESEC_TOKEN." >&2
+    exit=1
+  fi
+
+  for cmd in curl jq; do
+    if ! type -t "${cmd}" >/dev/null; then
+      echo "${cmd} is needed. Please install it." >&2
+      exit=1
+    fi
+  done
+
+  [ ${exit} -ne 0 ] && exit ${exit}
+
+  :
+}
+
 HANDLER="$1"
 shift
-if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert)$ ]]; then
+if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|startup_hook)$ ]]; then
   "$HANDLER" "$@"
 fi
