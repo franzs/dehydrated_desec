@@ -226,8 +226,26 @@ deploy_cert() {
   fi
 }
 
+startup_hook() {
+  # This hook is called before the cron command to do some initial tasks
+  # (e.g. starting a webserver).
+
+  local exit=0
+
+  for cmd in curl jq; do
+    if ! type -t "${cmd}" >/dev/null; then
+      echo "${cmd} is needed. Please install it." >&2
+      exit=1
+    fi
+  done
+
+  [ ${exit} -ne 0 ] && exit ${exit}
+
+  :
+}
+
 HANDLER="$1"
 shift
-if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert)$ ]]; then
+if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|startup_hook)$ ]]; then
   "$HANDLER" "$@"
 fi
