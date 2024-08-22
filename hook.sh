@@ -14,6 +14,10 @@ if [ -f "${CONFIG}" ]; then
   . "${CONFIG}"
 fi
 
+desec_authorization_header() {
+  echo "Authorization: Token ${DESEC_TOKEN}"
+}
+
 desec_add_rrset() {
   local domainname="$1"
   local subdomain="$2"
@@ -34,7 +38,7 @@ desec_add_rrset() {
 
   curl -sS \
     --request POST \
-    --header "Authorization: Token ${DESEC_TOKEN}" \
+    --header "$(desec_authorization_header)" \
     --header "Content-Type: application/json" \
     --data "{\"subname\": \"${subdomain}\", \"type\": \"${rrtype}\", \"ttl\": ${ttl}, \"records\": [\"${content}\"]}" \
     "${BASE_API_URL}/${domainname}/rrsets/" |
@@ -50,7 +54,7 @@ desec_remove_rrset() {
 
   curl -sS \
     --request DELETE \
-    --header "Authorization: Token ${DESEC_TOKEN}" \
+    --header "$(desec_authorization_header)" \
     "${BASE_API_URL}/${domainname}/rrsets/${subdomain}/${rrtype}/"
 }
 
@@ -59,7 +63,7 @@ desec_responsible_domain() {
 
   curl -sS \
     --request GET \
-    --header "Authorization: Token ${DESEC_TOKEN}" \
+    --header "$(desec_authorization_header)" \
     "${BASE_API_URL}/?owns_qname=${qname}" |
     jq -r '.[0].name'
 }
