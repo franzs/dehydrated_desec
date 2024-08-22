@@ -228,7 +228,7 @@ startup_hook() {
   local exit=0
 
   if [ -z "${DESEC_TOKEN}" ]; then
-    echo "Please set environment variable DESEC_TOKEN." >&2
+    echo "A token is needed for deSEC. Please set environment variable DESEC_TOKEN." >&2
     exit=1
   fi
 
