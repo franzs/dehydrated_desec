@@ -25,6 +25,11 @@ desec_add_rrset() {
   local content="$4"
   local ttl="${5:-${MIN_TTL}}"
 
+  local curl_http_code_tag="HTTPSTATUS:"
+
+  local curl_response
+  local curl_http_code
+
   if [ "${ttl}" -lt ${MIN_TTL} ]; then
     echo "TTL must be at least ${MIN_TTL} s. Adjusting." >&2
     ttl=${MIN_TTL}
@@ -36,13 +41,22 @@ desec_add_rrset() {
 
   echo "Adding ${subdomain}${DOMAIN_SEPERATOR}${domain_name}"
 
-  curl -sS \
+  curl_response=$(curl -sS \
+    --write-out "${curl_http_code_tag}%{http_code}" \
     --request POST \
     --header "$(desec_authorization_header)" \
     --header "Content-Type: application/json" \
     --data "{\"subname\": \"${subdomain}\", \"type\": \"${rrtype}\", \"ttl\": ${ttl}, \"records\": [\"${content}\"]}" \
-    "${BASE_API_URL}/${domainname}/rrsets/" |
-    jq .
+    "${BASE_API_URL}/${domainname}/rrsets/")
+
+  curl_http_code=$(tr -d '\n' <<<"${curl_response}" | sed -e "s/.*${curl_http_code_tag}//")
+
+  if [ "${curl_http_code}" != "201" ]; then
+    echo "Adding record failed:"
+    # shellcheck disable=SC2001
+    sed -e "s/${curl_http_code_tag}.*//g" <<<"${curl_response}" | jq .
+    exit 1
+  fi
 }
 
 desec_remove_rrset() {
@@ -131,7 +145,7 @@ deploy_challenge() {
 
   desec_add_rrset "${domain_name}" "${challenge_name}" "${CHALLENGE_RRTYPE}" "${TOKEN_VALUE}" "${TTL}"
 
-  echo -ne "\nWaiting for record activation"
+  echo -n "Waiting for record activation"
 
   start_time=$(date +%s)
 
