@@ -9,11 +9,6 @@ CHALLENGE_RRTYPE="TXT"
 POLLING_INTERVAL=3
 POLLING_TIMEOUT=240
 
-if [ -z "${DESEC_TOKEN}" ]; then
-  echo "Please set environment variable DESEC_TOKEN." >&2
-  exit 1
-fi
-
 if [ -f "${CONFIG}" ]; then
   # shellcheck source=/dev/null
   . "${CONFIG}"
@@ -231,6 +226,11 @@ startup_hook() {
   # (e.g. starting a webserver).
 
   local exit=0
+
+  if [ -z "${DESEC_TOKEN}" ]; then
+    echo "Please set environment variable DESEC_TOKEN." >&2
+    exit=1
+  fi
 
   for cmd in curl jq; do
     if ! type -t "${cmd}" >/dev/null; then
