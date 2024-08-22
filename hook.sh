@@ -14,6 +14,10 @@ if [ -f "${CONFIG}" ]; then
   . "${CONFIG}"
 fi
 
+desec_authorization_header() {
+  echo "Authorization: Token ${DESEC_TOKEN}"
+}
+
 desec_add_rrset() {
   local domainname="$1"
   local subdomain="$2"
@@ -32,10 +36,12 @@ desec_add_rrset() {
 
   echo "Adding ${subdomain}${DOMAIN_SEPERATOR}${domain_name}"
 
-  curl -sS -X POST "${BASE_API_URL}/${domainname}/rrsets/" \
-    --header "Authorization: Token ${DESEC_TOKEN}" \
-    --header "Content-Type: application/json" --data \
-    "{\"subname\": \"${subdomain}\", \"type\": \"${rrtype}\", \"ttl\": ${ttl}, \"records\": [\"${content}\"]}" |
+  curl -sS \
+    --request POST \
+    --header "$(desec_authorization_header)" \
+    --header "Content-Type: application/json" \
+    --data "{\"subname\": \"${subdomain}\", \"type\": \"${rrtype}\", \"ttl\": ${ttl}, \"records\": [\"${content}\"]}" \
+    "${BASE_API_URL}/${domainname}/rrsets/" |
     jq .
 }
 
@@ -46,15 +52,19 @@ desec_remove_rrset() {
 
   echo "Removing ${subdomain}${DOMAIN_SEPERATOR}${domain_name}"
 
-  curl -sS -X DELETE "${BASE_API_URL}/${domainname}/rrsets/${subdomain}/${rrtype}/" \
-    --header "Authorization: Token ${DESEC_TOKEN}"
+  curl -sS \
+    --request DELETE \
+    --header "$(desec_authorization_header)" \
+    "${BASE_API_URL}/${domainname}/rrsets/${subdomain}/${rrtype}/"
 }
 
 desec_responsible_domain() {
   local qname="$1"
 
-  curl -sS -X GET "${BASE_API_URL}/?owns_qname=${qname}" \
-    --header "Authorization: Token ${DESEC_TOKEN}" |
+  curl -sS \
+    --request GET \
+    --header "$(desec_authorization_header)" \
+    "${BASE_API_URL}/?owns_qname=${qname}" |
     jq -r '.[0].name'
 }
 
