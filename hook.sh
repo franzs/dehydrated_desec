@@ -124,8 +124,6 @@ deploy_challenge() {
   #   TXT record. For HTTP validation it is the value that is expected
   #   be found in the $TOKEN_FILENAME file.
 
-  local extra_wait_time=12
-
   local domain_name
   local subdomain_name
   local challenge_name
@@ -145,7 +143,18 @@ deploy_challenge() {
 
   desec_add_rrset "${domain_name}" "${challenge_name}" "${CHALLENGE_RRTYPE}" "${TOKEN_VALUE}" "${TTL}"
 
-  echo -n "Waiting for record activation"
+  sleep 1
+}
+
+wait_for_challenge() {
+  # shellcheck disable=SC2034
+  local DOMAIN="${1}" TOKEN_FILENAME="${2}" TOKEN_VALUE="${3}"
+
+  local challenge_name
+
+  challenge_name="$(desec_challenge_name "${DOMAIN}")"
+
+  echo -n "Waiting for record activation ${challenge_name} "
 
   start_time=$(date +%s)
 
@@ -158,13 +167,13 @@ deploy_challenge() {
       return
     fi
 
-    sleep ${POLLING_INTERVAL}
-    echo -n "."
-
     for nameserver in "${DESEC_NAMESERVERS[@]}"; do
-      query_result="$(dig @"${nameserver}." "${challenge_name}${DOMAIN_SEPERATOR}${domain_name}." "${CHALLENGE_RRTYPE}" +short)"
+      query_result="$(dig @"${nameserver}." "${challenge_name}." "${CHALLENGE_RRTYPE}" +short)"
 
       if [ -z "${query_result}" ]; then
+        sleep ${POLLING_INTERVAL}
+        echo -n "."
+
         continue 2
       fi
     done
@@ -172,8 +181,16 @@ deploy_challenge() {
     break
   done
 
+  echo
+}
+
+extra_wait_time() {
+  local extra_wait_time=12
+
   # give some extra time
   start_time=$(date +%s)
+
+  echo -n "Waiting a bit longer "
 
   while true; do
     current_time=$(date +%s)
@@ -183,7 +200,7 @@ deploy_challenge() {
     fi
 
     sleep ${POLLING_INTERVAL}
-    echo -n "+"
+    echo -n "."
   done
 
   echo
@@ -214,6 +231,8 @@ clean_challenge() {
   challenge_name="$(desec_challenge_name "${subdomain_name}")"
 
   desec_remove_rrset "${domain_name}" "${challenge_name}" "${CHALLENGE_RRTYPE}"
+
+  sleep 1
 }
 
 deploy_cert() {
@@ -270,6 +289,25 @@ startup_hook() {
 
 HANDLER="$1"
 shift
-if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge|deploy_cert|startup_hook)$ ]]; then
+
+if [[ "${HANDLER}" =~ ^(deploy_challenge|clean_challenge)$ ]]; then
+  declare -a saved_args=("${@}")
+
+  while [ $# -ge 3 ]; do
+    "$HANDLER" "$1" "$2" "$3"
+    shift 3
+  done
+
+  if [ "${HANDLER}" = "deploy_challenge" ]; then
+    set -- "${saved_args[@]}"
+
+    while [ $# -ge 3 ]; do
+      wait_for_challenge "$1" "$2" "$3"
+      shift 3
+    done
+
+    extra_wait_time
+  fi
+elif [[ "${HANDLER}" =~ ^(deploy_cert|startup_hook)$ ]]; then
   "$HANDLER" "$@"
 fi
