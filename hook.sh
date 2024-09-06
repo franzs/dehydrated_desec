@@ -9,10 +9,18 @@ CHALLENGE_RRTYPE="TXT"
 POLLING_INTERVAL=3
 POLLING_TIMEOUT=240
 
+declare -g curl_temp_file
+
 if [ -f "${CONFIG}" ]; then
   # shellcheck source=/dev/null
   . "${CONFIG}"
 fi
+
+remove_curl_temp_file() {
+  if [ -f "${curl_temp_file}" ]; then
+    rm -f "${curl_temp_file}"
+  fi
+}
 
 desec_authorization_header() {
   echo "Authorization: Token ${DESEC_TOKEN}"
@@ -25,9 +33,6 @@ desec_add_rrset() {
   local content="$4"
   local ttl="${5:-${MIN_TTL}}"
 
-  local curl_http_code_tag="HTTPSTATUS:"
-
-  local curl_response
   local curl_http_code
 
   if [ "${ttl}" -lt ${MIN_TTL} ]; then
@@ -39,22 +44,23 @@ desec_add_rrset() {
     content='\"'"${content}"'\"'
   fi
 
+  curl_temp_file=$(mktemp)
+  trap 'remove_curl_temp_file' EXIT
+
   echo "Adding ${subdomain}${DOMAIN_SEPERATOR}${domain_name}"
 
-  curl_response=$(curl -sS \
-    --write-out "${curl_http_code_tag}%{http_code}" \
+  curl_http_code=$(curl -sS \
+    --output "${curl_temp_file}" \
+    --write-out "%{http_code}" \
     --request POST \
     --header "$(desec_authorization_header)" \
     --header "Content-Type: application/json" \
     --data "{\"subname\": \"${subdomain}\", \"type\": \"${rrtype}\", \"ttl\": ${ttl}, \"records\": [\"${content}\"]}" \
     "${BASE_API_URL}/${domainname}/rrsets/")
 
-  curl_http_code=$(tr -d '\n' <<<"${curl_response}" | sed -e "s/.*${curl_http_code_tag}//")
-
   if [ "${curl_http_code}" != "201" ]; then
     echo "Adding record failed:"
-    # shellcheck disable=SC2001
-    sed -e "s/${curl_http_code_tag}.*//g" <<<"${curl_response}" | jq .
+    jq . <"${curl_temp_file}"
     exit 1
   fi
 }
