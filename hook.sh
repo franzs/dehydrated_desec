@@ -47,7 +47,7 @@ desec_add_rrset() {
   curl_temp_file=$(mktemp)
   trap 'remove_curl_temp_file' EXIT
 
-  echo "Adding ${subdomain}${DOMAIN_SEPARATOR}${domain_name}"
+  echo "Adding ${subdomain}${DOMAIN_SEPARATOR}${domainname}"
 
   curl_http_code=$(curl -sS \
     --output "${curl_temp_file}" \
@@ -70,7 +70,7 @@ desec_remove_rrset() {
   local subdomain="$2"
   local rrtype="$3"
 
-  echo "Removing ${subdomain}${DOMAIN_SEPARATOR}${domain_name}"
+  echo "Removing ${subdomain}${DOMAIN_SEPARATOR}${domainname}"
 
   curl -sS \
     --request DELETE \
