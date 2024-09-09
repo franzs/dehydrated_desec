@@ -3,7 +3,7 @@
 BASE_API_URL="https://desec.io/api/v1/domains"
 TTL=3600
 MIN_TTL=3600
-DOMAIN_SEPERATOR="."
+DOMAIN_SEPARATOR="."
 DESEC_NAMESERVERS=("ns1.desec.io" "ns2.desec.org")
 CHALLENGE_RRTYPE="TXT"
 POLLING_INTERVAL=3
@@ -47,7 +47,7 @@ desec_add_rrset() {
   curl_temp_file=$(mktemp)
   trap 'remove_curl_temp_file' EXIT
 
-  echo "Adding ${subdomain}${DOMAIN_SEPERATOR}${domain_name}"
+  echo "Adding ${subdomain}${DOMAIN_SEPARATOR}${domain_name}"
 
   curl_http_code=$(curl -sS \
     --output "${curl_temp_file}" \
@@ -70,7 +70,7 @@ desec_remove_rrset() {
   local subdomain="$2"
   local rrtype="$3"
 
-  echo "Removing ${subdomain}${DOMAIN_SEPERATOR}${domain_name}"
+  echo "Removing ${subdomain}${DOMAIN_SEPARATOR}${domain_name}"
 
   curl -sS \
     --request DELETE \
@@ -95,7 +95,7 @@ desec_subdomain_name() {
   if [ "${domain}" = "${domain_name}" ]; then
     echo ""
   else
-    echo "${domain%"${DOMAIN_SEPERATOR}""${domain_name}"}"
+    echo "${domain%"${DOMAIN_SEPARATOR}""${domain_name}"}"
   fi
 }
 
@@ -105,7 +105,7 @@ desec_challenge_name() {
   if [ -z "${subdomain}" ]; then
     echo "_acme-challenge"
   else
-    echo "_acme-challenge${DOMAIN_SEPERATOR}${subdomain}"
+    echo "_acme-challenge${DOMAIN_SEPARATOR}${subdomain}"
   fi
 }
 
